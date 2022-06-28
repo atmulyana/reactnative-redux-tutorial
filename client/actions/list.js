@@ -25,7 +25,12 @@ export function fetchList() {
         dispatch(loadList());
         
         callServer('people').then(data => {
-            if (data !== false) dispatch(listLoaded(data)); 
+            if (data !== false) {
+                dispatch(listLoaded(data));
+            }
+            else {
+                dispatch(listLoaded(null));
+            }
         });
     };
 }

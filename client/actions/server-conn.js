@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import {Alert} from "react-native";
 
 export const SERVER_URI = 'http://192.168.56.1:7777/';
 export const DEFAULT_REQ_CONF = {

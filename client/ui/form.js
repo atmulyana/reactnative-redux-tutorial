@@ -1,8 +1,10 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux'
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Picker } from '@react-native-community/picker';
+import React, {Component} from 'react';
+import {connect} from 'react-redux'
+import {Alert, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Picker} from '@react-native-picker/picker';
+import RootView from './rootView';
 import Button from './button';
+import LoadingIndicator from './loadingIndicator';
 import RadioForm from 'react-native-simple-radio-button';
 import fetchItem from '../actions/get-item';
 import fetchCountries from '../actions/get-countries';
@@ -11,7 +13,7 @@ import deleteItem from '../actions/delete-form';
 import {refreshList} from '../actions/list';
 
 
-class RadioSex extends Component {
+class RadioGender extends Component {
     element = React.createRef();
 
     componentDidMount() {
@@ -74,8 +76,8 @@ class FormPage extends Component {
             return;
             
         }
-        if (!data.Sex) {
-            Alert.alert('Validation', 'Please choose the Sex');
+        if (!data.Gender) {
+            Alert.alert('Validation', 'Please choose the Gender');
             return;
         }
         if (!data.CountryId) {
@@ -110,58 +112,57 @@ class FormPage extends Component {
     }
 
     _back() {
-        this.props.navigation.navigate('List');
         this.props.dispatch(refreshList());
+        this.props.navigation.navigate('List');
     }
     
     render() {
-        if (this.props.loading)
-            return (<View style={styles.container}>
-                <ActivityIndicator />
-            </View>);
-        
         const data = this.state;
-        let sexIdx = data.Sex == 'M' ? 0 :
-                     data.Sex == 'F' ? 1 :
-                     -1;
+        let genderIdx = data.Gender == 'M' ? 0 :
+                        data.Gender == 'F' ? 1 :
+                        -1;
         
-        return (<View style={styles.container}>
+        return <RootView style={styles.container}><ScrollView style={styles.content}>
             <Text style={styles.inputLabel}>Name:</Text>
             <TextInput value={data.Name} maxLength={30} onChangeText={Name => this.setState({Name})} style={styles.input} />
 
             <Text style={styles.inputLabel}>Age:</Text>
             <TextInput value={(data.Age||'')+''} maxLength={3} keyboardType='number-pad' onChangeText={Age => this.setState({Age}) } style={styles.input} />
 
-            <Text style={styles.inputLabel}>Sex:</Text>
-            <RadioSex index={sexIdx} onPress={Sex => this.setState({Sex: Sex && Sex.value || Sex})} />
+            <Text style={styles.inputLabel}>Gender:</Text>
+            <RadioGender index={genderIdx} onPress={gender => this.setState({Gender: gender && gender.value || gender})} />
             
             <Text style={styles.inputLabel}>Country:</Text>
-            <Picker selectedValue={data.CountryId} style={styles.input} onValueChange={(CountryId, idx) => this.setState({CountryId})}>
+            <Picker selectedValue={data.CountryId} style={styles.input} onValueChange={CountryId => this.setState({CountryId})}>
+                <Picker.Item value={''} label={'-- Please Choose --'} />
                 {this.props.countries.map((country, idx) => <Picker.Item key={idx} value={country.Id} label={country.Name} />)}
             </Picker>
 
-            <View style={styles.btnGroup} h>
+            <View style={styles.btnGroup}>
                 <Button title="Save" onclick={() => this._save()} disabled={this.props.loading} />
                 {data.Id && (
                     <Button color='red' title="Delete" onclick={() => this._delete()} disabled={this.props.loading} />
                 )}
                 <Button title="Go Back" onclick={() => {this.props.navigation.goBack()}} disabled={this.props.loading} />
             </View>
-        </View>);
+            
+            <LoadingIndicator loading={this.props.loading} style={{top: 40}} />
+        </ScrollView></RootView>;
     }
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16, paddingTop: 30, backgroundColor: '#eee' },
-    btnGroup: { flexDirection: 'row' },
-    input: {borderWidth:1, marginBottom: 4, marginTop:0, padding: 2},
+    container: {padding: 16, backgroundColor: '#eee'},
+    content: {flex: 1},
+    btnGroup: {flexDirection: 'row'},
+    input: {borderWidth: 1, marginBottom: 4, marginTop: 0, padding: 2},
     inputLabel: {fontWeight: 'bold'},
 });
 
 export default connect(
     state => ({
-        data: { ...state.form },
-        loading: state.form.loading && state.countries.loaded,
+        data: {...state.form},
+        loading: state.form.loading || !state.countries.loaded,
         countries: state.countries.data,
     }),
     (dispatch, props) => ({

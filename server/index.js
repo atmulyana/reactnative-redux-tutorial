@@ -4,13 +4,12 @@ const bodyParser = require('body-parser');
 const db = require('mssql/msnodesqlv8');
 const dbConf = {
     driver: 'msnodesqlv8',
-    server: 'localhost',
+    server: 'localhost', //Using 'localhost' causes ODBC driver cannot connect on MacOS. Replace it with '127.0.0.1'
     //user: '<db user>',
     //password: '<db password>',
     database: 'ReactNodeTutorial',
     options: {
-        enableArithAbort: true,
-        trustedConnection: true
+        trustedConnection: true, //set it to be 'true' to use 'Windows Authentication', otherwise we must provide 'user' and 'password'
     }
 };
 
@@ -45,7 +44,7 @@ const app = new express();
 app.use(bodyParser.json());
 
 app.get('/people', async function (req, res) {
-    let result = await query('SELECT p.Id, p.Name, p.Age, p.Sex, LOWER(c.Code) CtrCode FROM Person p, Country c where p.CountryId = c.Id');
+    let result = await query('SELECT p.Id, p.Name, p.Age, p.Gender, LOWER(c.Code) CtrCode FROM Person p, Country c WHERE p.CountryId = c.Id ORDER BY p.Name');
     if (result === false) error(res);
     else success(res, result.recordset);
 });
@@ -60,7 +59,7 @@ app.get('/person/:id', async function (req, res) {
 app.put('/person', async function (req, res) {
     let params = req.body;
     let id = new Date().getTime() + '';
-    let result = await query`INSERT INTO Person (Name, Age, Sex, CountryId, Id) VALUES (${params.Name}, ${params.Age}, ${params.Sex}, ${params.CountryId}, ${id})`;
+    let result = await query`INSERT INTO Person (Name, Age, Gender, CountryId, Id) VALUES (${params.Name}, ${params.Age}, ${params.Gender}, ${params.CountryId}, ${id})`;
     if (result === false) error(res);
     else success(res, result.output);
 });
@@ -70,7 +69,7 @@ app.post('/person', async function (req, res) {
     let result = await query`UPDATE Person SET
             Name = ${params.Name},
             Age = ${params.Age},
-            Sex = ${params.Sex}, 
+            Gender = ${params.Gender}, 
             CountryId = ${params.CountryId} 
         WHERE Id = ${params.Id}`
     ;

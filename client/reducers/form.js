@@ -8,7 +8,7 @@ export default function processForm(state = INITIAL_STATE.form, action) {
         Id: null,
         Name: null,
         Age: null,
-        Sex: null,
+        Gender: null,
         CountryId: null,
     };
     switch (action.type) {

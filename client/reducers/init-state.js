@@ -1,6 +1,7 @@
 const INITIAL_STATE = {
     list: {
-        loading: true,
+        loading: false,
+        refreshing: false,
         data: []
     },
     form: {
@@ -9,7 +10,7 @@ const INITIAL_STATE = {
         Id: null,
         Name: null,
         Age: null,
-        Sex: null,
+        Gender: null,
         CountryId: null,
     },
     countries: {

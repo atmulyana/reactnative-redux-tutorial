@@ -4,17 +4,15 @@ import INITIAL_STATE from './init-state';
 export default function getList(state = INITIAL_STATE.list, action) {
     switch (action.type) {
         case GET_LIST: 
-            return Object.assign({}, state, {loading: true});
+            return { ...state, loading: true};
         case LIST_LOADED:
             return {
                 loading: false,
-                data: action.data
+                refreshing: false,
+                data: action.data ?? state.data,
             };
         case REFRESH_LIST:
-            return {
-                loading: true,
-                data: [],
-            };
+            return { ...state, refreshing: true };
         default:
             return state;
     }
