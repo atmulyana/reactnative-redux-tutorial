@@ -2,6 +2,8 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux'
 import {Alert, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {Picker} from '@react-native-picker/picker';
+import {setStatusStyleDefault, ValidationContext, withValidation} from 'react-native-form-input-validator';
+import {integer, numeric, regex, required, rule} from 'react-native-form-input-validator/rules';
 import RootView from './rootView';
 import Button from './button';
 import LoadingIndicator from './loadingIndicator';
@@ -14,30 +16,76 @@ import {refreshList} from '../actions/list';
 
 
 class RadioGender extends Component {
-    element = React.createRef();
+    #element = React.createRef();
+    #onPress;
+
+    constructor(props) {
+        super(props);
+        this.#onPress = gender => {
+            const value = gender && gender.value || gender;
+            if (typeof(this.props.onPress) == 'function') this.props.onPress(value);
+        }
+    }
+
+    get value() {
+        return this.#element
+    }
 
     componentDidMount() {
         if (typeof(this.props.index) == 'number') {
-            this.element.current.updateIsActiveIndex(this.props.index);
+            this.#element.current.updateIsActiveIndex(this.props.index);
         }
     }
 
     componentDidUpdate(prevProps) {
-        if (prevProps.index != this.props.index) this.element.current.updateIsActiveIndex(this.props.index);
+        if (prevProps.index != this.props.index) this.#element.current.updateIsActiveIndex(this.props.index);
     }
     
     render() {
+        const style = StyleSheet.flatten(this.props.style),
+              extProps = {};
+        if (style?.color) {
+            extProps.buttonColor = extProps.labelColor  = style.color;
+        }
         return (<RadioForm
-            ref={this.element}
+            {...extProps}
+            ref={this.#element}
             radio_props={[{value:'M', label:'Male  '}, {value:'F', label:'Female'}]}
             initial={-1}
             formHorizontal={true}
-            onPress={this.props.onPress} />
-        );
+            animation={false}//android
+            onPress={this.#onPress}
+        />);
     }
 }
 
+const NameInput = withValidation(TextInput, {
+    rules: [
+        required,
+        regex(/^[a-zA-Z']+( [a-zA-Z']+)*$/),
+    ],
+    setStatusStyle: setStatusStyleDefault,
+});
+const AgeInput = withValidation(TextInput, {
+    rules: [required, numeric, integer],
+    setStatusStyle: setStatusStyleDefault,
+});
+const GenderInput = withValidation(RadioGender, {
+    getValue: props => props.index,
+    rules: rule(
+        index => index === 0 || index === 1,
+        'required'
+    ),
+    setStatusStyle: setStatusStyleDefault,
+});
+const CountryInput = withValidation(Picker, {
+    getValue: props => props.selectedValue,
+    rules: required,
+})
+
 class FormPage extends Component {
+    #validationRef = React.createRef();
+
     constructor(props) {
         super(props);
         this.state = {...props.data};
@@ -62,30 +110,8 @@ class FormPage extends Component {
     }
 
     _save() {
-        const data = this.state;
-        if (!(data.Name||'').trim()) {
-            Alert.alert('Validation', 'Please fill Name');
-            return;
-        }
-        if (!data.Age) {
-            Alert.alert('Validation', 'Please fill Age');
-            return;
-        }
-        if (!/^[0-9]+$/.test(data.Age)) {
-            Alert.alert('Validation', 'Age value is invalid');
-            return;
-            
-        }
-        if (!data.Gender) {
-            Alert.alert('Validation', 'Please choose the Gender');
-            return;
-        }
-        if (!data.CountryId) {
-            Alert.alert('Validation', 'Please choose the Coutry');
-            return;
-        }
-
-        this.props.dispatch(saveItem(data,
+        if (!this.#validationRef.current?.validate()) return;
+        this.props.dispatch(saveItem(this.state,
             err => {
                 if (err) Alert.alert('Error saving data');
                 else this._back();
@@ -121,33 +147,34 @@ class FormPage extends Component {
         let genderIdx = data.Gender == 'M' ? 0 :
                         data.Gender == 'F' ? 1 :
                         -1;
-        
-        return <RootView style={styles.container}><ScrollView style={styles.content}>
-            <Text style={styles.inputLabel}>Name:</Text>
-            <TextInput value={data.Name} maxLength={30} onChangeText={Name => this.setState({Name})} style={styles.input} />
+        return <RootView style={styles.container}>
+            <ScrollView style={styles.content}>
+                <ValidationContext ref={this.#validationRef}>
+                    <Text style={styles.inputLabel}>Name:</Text>
+                    <NameInput value={data.Name} maxLength={30} onChangeText={Name => this.setState({Name})} style={styles.input} />
 
-            <Text style={styles.inputLabel}>Age:</Text>
-            <TextInput value={(data.Age||'')+''} maxLength={3} keyboardType='number-pad' onChangeText={Age => this.setState({Age}) } style={styles.input} />
+                    <Text style={styles.inputLabel}>Age:</Text>
+                    <AgeInput value={(data.Age||'')+''} maxLength={3} keyboardType='number-pad' onChangeText={Age => this.setState({Age}) } style={styles.input} />
 
-            <Text style={styles.inputLabel}>Gender:</Text>
-            <RadioGender index={genderIdx} onPress={gender => this.setState({Gender: gender && gender.value || gender})} />
-            
-            <Text style={styles.inputLabel}>Country:</Text>
-            <Picker selectedValue={data.CountryId} style={styles.input} onValueChange={CountryId => this.setState({CountryId})}>
-                <Picker.Item value={''} label={'-- Please Choose --'} />
-                {this.props.countries.map((country, idx) => <Picker.Item key={idx} value={country.Id} label={country.Name} />)}
-            </Picker>
-
-            <View style={styles.btnGroup}>
-                <Button title="Save" onclick={() => this._save()} disabled={this.props.loading} />
-                {data.Id && (
-                    <Button color='red' title="Delete" onclick={() => this._delete()} disabled={this.props.loading} />
-                )}
-                <Button title="Go Back" onclick={() => {this.props.navigation.goBack()}} disabled={this.props.loading} />
-            </View>
-            
+                    <Text style={styles.inputLabel}>Gender:</Text>
+                    <GenderInput index={genderIdx} onPress={Gender => this.setState({Gender})} />
+                    
+                    <Text style={styles.inputLabel}>Country:</Text>
+                    <CountryInput selectedValue={data.CountryId} style={styles.input} onValueChange={CountryId => this.setState({CountryId})}>
+                        <Picker.Item value={''} label={'-- Please Choose --'} />
+                        {this.props.countries.map((country, idx) => <Picker.Item key={idx} value={country.Id} label={country.Name} />)}
+                    </CountryInput>
+                </ValidationContext>
+                <View style={styles.btnGroup}>
+                    <Button title="Save" onclick={() => this._save()} disabled={this.props.loading} />
+                    {data.Id && (
+                        <Button color='red' title="Delete" onclick={() => this._delete()} disabled={this.props.loading} />
+                    )}
+                    <Button title="Go Back" onclick={() => {this.props.navigation.goBack()}} disabled={this.props.loading} />
+                </View>
+            </ScrollView>
             <LoadingIndicator loading={this.props.loading} style={{top: 40}} />
-        </ScrollView></RootView>;
+        </RootView>;
     }
 }
 
@@ -155,7 +182,7 @@ const styles = StyleSheet.create({
     container: {padding: 16, backgroundColor: '#eee'},
     content: {flex: 1},
     btnGroup: {flexDirection: 'row'},
-    input: {borderWidth: 1, marginBottom: 4, marginTop: 0, padding: 2},
+    input: {borderColor: 'black', borderWidth: 1, color: 'black', marginBottom: 4, marginTop: 0, padding: 2},
     inputLabel: {fontWeight: 'bold'},
 });
 
